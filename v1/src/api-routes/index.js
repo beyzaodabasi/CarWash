@@ -1,0 +1,5 @@
+module.exports.UserRoutes = require('./User')
+module.exports.TenantRoutes = require('./Tenant')
+module.exports.MemberRoutes = require('./Member')
+module.exports.StaffRoutes = require('./Staff')
+module.exports.NotificationRoutes = require('./Notification')
