@@ -7,8 +7,8 @@ db.once('open', () => {
 })
 
 const connectDB = async () => {
-  await Mongoose.connect(`mongodb://127.0.0.1:27017/faultrepairtracking`)
-  // await Mongoose.connect(`mongodb://127.0.0.1:27017/faultrepairtracking`, {
+  await Mongoose.connect(`mongodb://127.0.0.1:27017/carwash`)
+  // await Mongoose.connect(`mongodb://127.0.0.1:27017/carwash`, {
   //   useNewUrlParser: true,
   //   useUnifiedTopology: true,
   // });

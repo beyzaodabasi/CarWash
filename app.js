@@ -10,7 +10,7 @@ const setLanguage = require('./v1/src/middlewares/language')
 const setVersion = require('./v1/src/middlewares/setVersion')
 const errorHandler = require('./v1/src/middlewares/errorHandler')
 
-const { UserRoutes, TenantRoutes, MemberRoutes, StaffRoutes, NotificationRoutes } = require('./v1/src/api-routes')
+const { SuperUserRoutes, TenantRoutes, UserRoutes, MemberRoutes, StaffRoutes, NotificationRoutes, DeviceRoutes, WalletRoutes, TransactionRoutes } = require('./v1/src/api-routes')
 
 config()
 loaders()
@@ -41,11 +41,15 @@ async function startServer() {
   })
 
   httpServer.listen(process.env.APP_PORT || 8081, () => {
-    app.use('/api/v1/users', setLanguage, setVersion, UserRoutes)
+    app.use('/api/v1/superusers', setLanguage, setVersion, SuperUserRoutes)
     app.use('/api/v1/tenants', setLanguage, setVersion, TenantRoutes)
+    app.use('/api/v1/users', setLanguage, setVersion, UserRoutes)
     app.use('/api/v1/members', setLanguage, setVersion, MemberRoutes)
     app.use('/api/v1/staffs', setLanguage, setVersion, StaffRoutes)
     app.use('/api/v1/notifications', setLanguage, setVersion, NotificationRoutes)
+    app.use('/api/v1/devices', setLanguage, setVersion, DeviceRoutes)
+    app.use('/api/v1/wallets', setLanguage, setVersion, WalletRoutes)
+    app.use('/api/v1/transactions', setLanguage, setVersion, TransactionRoutes)
 
     app.use((req, res, next) => {
       const error = new Error('Aradığınız sayfa bulunmamaktadır...')

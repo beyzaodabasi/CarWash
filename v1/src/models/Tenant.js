@@ -13,16 +13,20 @@ const TenantScheme = new Mongoose.Schema(
     title: String,
     firstName: String,
     lastName: String,
-    userName: String,
     email: {
       type: String,
       unique: true,
+      required: true,
     },
     taxOffice: String,
     taxNumber: String,
     address: String,
     postalCode: String,
-    gsm: String,
+    gsm: {
+      type: String,
+      required: true,
+      unique: true,
+    },
     city: String,
     town: String,
     country: String,
@@ -31,11 +35,10 @@ const TenantScheme = new Mongoose.Schema(
       enum: ['ACTIVE', 'PASSIVE'],
       default: 'ACTIVE',
     },
-    version: [
-      {
-        type: String,
-      },
-    ],
+    setting: {
+      type: Mongoose.Types.ObjectId,
+      ref: 'settings',
+    },
     created_date: {
       type: Date,
       default: () => new Date(Date.now() + 10800000),

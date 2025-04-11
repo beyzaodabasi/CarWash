@@ -30,12 +30,15 @@ const WashingSchema = new Mongoose.Schema(
       type: Mongoose.Types.ObjectId,
       ref: 'users',
     },
+    // randevu saati
     start: Date,
+    // yıkama bitiş saati
     end: Date,
     total: Number,
     status: {
       type: String,
       enum: ['WAITING', 'IN_PROGRESS', 'FINISHED', 'CANCELLED'],
+      default: 'WAITING',
     },
     cancelledBy: {
       type: Mongoose.Types.ObjectId,

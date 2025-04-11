@@ -1,33 +1,19 @@
 const httpStatus = require('http-status')
-const UserService = require('../services/Users')
-const StaffService = require('../services/Staffs')
-const { createPasswordToHash, generateAccessToken, generateRefreshToken } = require('../scripts/utils/auth')
+const WashingService = require('../services/Washings')
 const ApiError = require('../errors/ApiError')
 const i18n = require('../config/translate')
 
 const index = async (req, res, next) => {
   if (req.user.userType === 'TENANT') {
-    await StaffService.list({ tenant: req.user?.tenant })
+    await WashingService.list({ tenant: req.user?.tenant })
       .then((response) => {
-        res.status(httpStatus.OK).send(
-          response.map((u) => {
-            const user = u.toObject()
-            delete user.user.password
-            return user
-          })
-        )
+        res.status(httpStatus.OK).send(response)
       })
       .catch((error) => next(new ApiError(error.message, httpStatus.NOT_FOUND)))
   } else if (req.user.userType === 'SUPERUSER') {
-    await StaffService.list()
+    await WashingService.list()
       .then((response) => {
-        res.status(httpStatus.OK).send(
-          response.map((u) => {
-            const user = u.toObject()
-            delete user.user.password
-            return user
-          })
-        )
+        res.status(httpStatus.OK).send(response)
       })
       .catch((error) => next(new ApiError(error.message, httpStatus.NOT_FOUND)))
   } else {
@@ -36,10 +22,9 @@ const index = async (req, res, next) => {
 }
 
 const store = async (req, res, next) => {
-  req.body.password = createPasswordToHash(req.body.password)
   req.body.version = req.headers['version']
-  await StaffService.create(req.body)
-    .then(async (response) => {
+  await WashingService.create(req.body)
+    .then((response) => {
       res.status(httpStatus.CREATED).send(response)
     })
     .catch((error) => {
@@ -48,11 +33,9 @@ const store = async (req, res, next) => {
 }
 
 const show = async (req, res, next) => {
-  await StaffService.findOne({ _id: req.params.id })
+  await WashingService.findOne({ _id: req.params.id })
     .then((response) => {
-      const user = response.toObject()
-      delete user.user.password
-      res.status(httpStatus.OK).send(user)
+      res.status(httpStatus.OK).send(response)
     })
     .catch((error) => {
       next(new ApiError(error.message, httpStatus.NOT_FOUND))
@@ -64,7 +47,7 @@ const update = async (req, res, next) => {
   req.body.updated_date = localTime
   req.body.version = req.headers['version']
 
-  await StaffService.update(req.params.id, req.body)
+  await WashingService.update(req.params.id, req.body)
     .then((response) => {
       res.status(httpStatus.OK).send(response)
     })
@@ -74,9 +57,9 @@ const update = async (req, res, next) => {
 }
 
 const destroy = async (req, res, next) => {
-  await StaffService.delete(req.params.id)
-    .then((response) => {
-      res.status(httpStatus.OK).send(response)
+  await WashingService.delete(req.params.id)
+    .then(() => {
+      res.status(httpStatus.OK).send()
     })
     .catch((error) => {
       next(new ApiError(error.message, httpStatus.BAD_REQUEST))

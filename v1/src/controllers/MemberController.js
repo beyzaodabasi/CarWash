@@ -5,38 +5,104 @@ const MemberService = require('../services/Members')
 const ApiError = require('../errors/ApiError')
 const i18n = require('../config/translate')
 
+const index = async (req, res, next) => {
+  if (req.user.userType === 'TENANT') {
+    await MemberService.list({ tenant: req.user?.tenant })
+      .then((response) => {
+        res.status(httpStatus.OK).send(
+          response.map((u) => {
+            const user = u.toObject()
+            delete user.user.password
+            return user
+          })
+        )
+      })
+      .catch((error) => next(new ApiError(error.message, httpStatus.NOT_FOUND)))
+  } else if (req.user.userType === 'SUPERUSER') {
+    await MemberService.list()
+      .then((response) => {
+        res.status(httpStatus.OK).send(
+          response.map((u) => {
+            const user = u.toObject()
+            delete user.user.password
+            return user
+          })
+        )
+      })
+      .catch((error) => next(new ApiError(error.message, httpStatus.NOT_FOUND)))
+  } else {
+    next(new ApiError(i18n.__('unAuthorized'), httpStatus.UNAUTHORIZED))
+  }
+}
+
 const store = async (req, res, next) => {
-  await UserService.create(req.body)
-    .then(async (response) => {
-      await MemberService.create({ ...req.body, user: response._id })
-        .then((response) => {
-          const user = {
-            ...response.toObject(),
-          }
-          delete user.password
-          res.status(httpStatus.CREATED).send(user)
-        })
-        .catch((error) => next(new ApiError(error.message, httpStatus.BAD_REQUEST)))
+  req.body.password = createPasswordToHash(`*!wsh*!${req.body.gsm}*!5858*!`)
+  req.body.version = req.headers['version']
+  await MemberService.create(req.body)
+    .then((response) => {
+      res.status(httpStatus.CREATED).send(response)
     })
-    .catch((error) => next(new ApiError(error.message, httpStatus.BAD_REQUEST)))
+    .catch((error) => {
+      next(new ApiError(error.message, httpStatus.BAD_REQUEST))
+    })
 }
 
 const login = async (req, res, next) => {
   req.body.password = createPasswordToHash(req.body.password)
-  await MemberService.findOne(req.body)
+  const data = {
+    tenant: req.body.tenant,
+    gsm: req.body.gsm,
+  }
+  await MemberService.findOne(data)
     .then((response) => {
-      const user = {
-        ...response.toObject(),
-        accessToken: generateAccessToken(response.toObject()),
-        refreshToken: generateRefreshToken(response.toObject()),
+      if (response.user.password == req.body.password) {
+        const user = {
+          ...response.toObject(),
+          accessToken: generateAccessToken(response.toObject()),
+          refreshToken: generateRefreshToken(response.toObject()),
+        }
+        delete user.user.password
+        res.status(httpStatus.OK).send(user)
+      } else {
+        next(new ApiError(i18n.__('memberNotFound'), httpStatus.UNAUTHORIZED))
       }
-      delete user.password
-      res.status(httpStatus.OK).send(user)
     })
     .catch((error) => next(new ApiError(error.message, httpStatus.UNAUTHORIZED)))
 }
 
+const show = async (req, res, next) => {
+  await MemberService.findOne({ _id: req.params.id })
+    .then((response) => {
+      const user = response.toObject()
+      delete user.user.password
+      res.status(httpStatus.OK).send(user)
+    })
+    .catch((error) => next(new ApiError(error.message, httpStatus.NOT_FOUND)))
+}
+
+const update = async (req, res, next) => {
+  const localTime = new Date(Date.now() + 10800000)
+  req.body.updated_date = localTime
+  req.body.version = req.headers['version']
+
+  await MemberService.update(req.params.id, req.body)
+    .then((response) => {
+      res.status(httpStatus.OK).send(response)
+    })
+    .catch((error) => next(new ApiError(error.message, httpStatus.BAD_REQUEST)))
+}
+
+const destroy = async (req, res, next) => {
+  await MemberService.delete(req.params.id)
+    .then((response) => res.status(httpStatus.OK).send(response))
+    .catch((error) => next(new ApiError(error.message, httpStatus.BAD_REQUEST)))
+}
+
 module.exports = {
+  index,
   store,
   login,
+  show,
+  update,
+  destroy,
 }

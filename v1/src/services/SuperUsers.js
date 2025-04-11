@@ -1,11 +1,11 @@
 const BaseService = require('./BaseService')
-const TenantModel = require('../models/Tenant')
+const SuperUserModel = require('../models/SuperUser')
 const UserService = require('./Users')
 const i18n = require('../config/translate')
 
-class Tenants extends BaseService {
+class SuperUsers extends BaseService {
   constructor() {
-    super(TenantModel)
+    super(SuperUserModel)
   }
 
   //override
@@ -18,25 +18,26 @@ class Tenants extends BaseService {
         gsm: data.gsm,
         city: data.city,
         town: data.town,
-        userType: 'TENANT',
+        userType: 'SUPERUSER',
         version: data.version,
       }
       await UserService.create(userData)
         .then(async (user) => {
           data.user = user._id
-          await TenantModel.create(data)
+          await SuperUserModel.create(data)
             .then((response) => {
-              user.tenant = response._id
+              user.superUser = response._id
               user.save()
               if (response) resolve(response)
-              else reject(new Error(i18n.__('tenantCreateError')))
+              else reject(new Error(i18n.__('superUserCreateError')))
             })
             .catch((err) => {
-              err.message = i18n.__('tenantCreateError')
+              err.message = i18n.__('superUserCreateError')
               reject(err)
             })
         })
         .catch((error) => {
+          // error.message = i18n.__('userCreateError')
           reject(error)
         })
     })
@@ -45,13 +46,13 @@ class Tenants extends BaseService {
   //override
   update(id, data) {
     return new Promise(async (resolve, reject) => {
-      await TenantModel.findByIdAndUpdate(id, data, { new: true })
+      await SuperUserModel.findByIdAndUpdate(id, data, { new: true })
         .then((response) => {
           if (response) resolve(response)
-          else reject(new Error(i18n.__('tenantUpdateError')))
+          else reject(new Error(i18n.__('superUserUpdateError')))
         })
         .catch((err) => {
-          err.message = i18n.__('tenantUpdateError')
+          err.message = i18n.__('superUserUpdateError')
           reject(err)
         })
     })
@@ -60,13 +61,13 @@ class Tenants extends BaseService {
   //override
   delete(id) {
     return new Promise((resolve, reject) => {
-      TenantModel.findByIdAndDelete(id)
+      SuperUserModel.findByIdAndDelete(id)
         .then((response) => {
           if (response) resolve(response)
-          else reject(new Error(i18n.__('tenantDeleteError')))
+          else reject(new Error(i18n.__('superUserDeleteError')))
         })
         .catch((err) => {
-          err.message = i18n.__('tenantDeleteError')
+          err.message = i18n.__('superUserDeleteError')
           reject(err)
         })
     })
@@ -74,15 +75,15 @@ class Tenants extends BaseService {
 
   list(where) {
     return new Promise((resolve, reject) => {
-      TenantModel.find(where)
+      SuperUserModel.find(where)
         .populate('user')
         .then((response) => {
           if (response) resolve(response)
-          else reject(new Error(i18n.__('tenantNotFound')))
+          else reject(new Error(i18n.__('superUserListError')))
         })
-        .catch((err) => {
-          err.message = i18n.__('tenantNotFound')
-          reject(err)
+        .catch((error) => {
+          error.message = i18n.__('superUserListError')
+          reject(error)
         })
     })
   }
@@ -90,18 +91,18 @@ class Tenants extends BaseService {
   //override
   findOne(where) {
     return new Promise((resolve, reject) => {
-      TenantModel.findOne(where)
+      SuperUserModel.findOne(where)
         .populate('user')
         .then((response) => {
           if (response) resolve(response)
-          else reject(new Error(i18n.__('tenantNotFound')))
+          else reject(new Error(i18n.__('superUserNotFound')))
         })
         .catch((err) => {
-          err.message = i18n.__('tenantNotFound')
+          err.message = i18n.__('superUserNotFound')
           reject(err)
         })
     })
   }
 }
 
-module.exports = new Tenants()
+module.exports = new SuperUsers()

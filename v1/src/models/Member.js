@@ -10,21 +10,27 @@ const MemberSchema = new Mongoose.Schema(
       type: Mongoose.Types.ObjectId,
       ref: 'users',
     },
-    name: {
-      type: String,
+    wallet: {
+      type: Mongoose.Types.ObjectId,
+      ref: 'wallets',
+    },
+    firstName: String,
+    lastName: String,
+    birthDate: { type: Date, required: true },
+    otherNationality: {
+      type: Boolean,
       required: true,
     },
-    email: {
+    tckn: {
       type: String,
       required: true,
+      unique: true,
     },
-    password: {
-      type: String,
-      required: true,
-    },
+    vkn: String,
     gsm: {
       type: String,
       required: true,
+      unique: true,
     },
     version: String,
     created_date: {

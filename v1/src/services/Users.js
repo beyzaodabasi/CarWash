@@ -13,25 +13,25 @@ class Users extends BaseService {
     data.created_date = localTime
     data.updated_date = localTime
     return new Promise(async (resolve, reject) => {
-      await UserModel.find({ email: data.email })
+      // Email ve Gsm ile kullanıcı aranıp, eğer varsa hata döndürülür.
+      await UserModel.findOne({ $or: [{ email: data.email }, { gsm: data.gsm }] })
         .then(async (response) => {
-          if (response.length > 0) {
-            reject(new Error(i18n.__('userCreateError')))
-          } else {
-            if (data.user_type === 'MEMBER') {
-              data.password = createPasswordToHash('/*/*!!/*/*!!/*/*')
-
-              return super
-                .create(data)
-                .then((memberdata) => {
-                  return memberdata
-                })
-                .catch((error) => {
-                  error.message = i18n.__('userCreateError')
-                  return reject(error)
-                })
+          if (response) {
+            if (response.email === data.email) {
+              reject(new Error(i18n.__('userEmailExist')))
+            } else if (response.gsm === data.gsm) {
+              reject(new Error(i18n.__('userGsmExist')))
             }
-            return resolve(super.create(data))
+          } else {
+            await UserModel.create(data)
+              .then((response) => {
+                if (response) resolve(response)
+                else reject(new Error(i18n.__('userCreateError')))
+              })
+              .catch((error) => {
+                error.message = i18n.__('userCreateError')
+                reject(error)
+              })
           }
         })
         .catch((error) => {

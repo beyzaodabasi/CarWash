@@ -10,21 +10,35 @@ const StaffSchema = new Mongoose.Schema(
       type: Mongoose.Types.ObjectId,
       ref: 'users',
     },
-    name: {
-      type: String,
+    wallet: {
+      type: Mongoose.Types.ObjectId,
+      ref: 'wallets',
+    },
+    device: {
+      type: Mongoose.Types.ObjectId,
+      ref: 'devices',
+    },
+    firstName: String,
+    lastName: String,
+    birthDate: { type: Date, required: true },
+    otherNationality: {
+      type: Boolean,
       required: true,
     },
-    email: {
+    tckn: {
       type: String,
       required: true,
+      unique: true,
     },
-    password: {
-      type: String,
-      required: true,
+    vkn: String,
+    drivingLicenseImage: {
+      key: String,
+      url: String,
     },
     gsm: {
       type: String,
       required: true,
+      unique: true,
     },
     version: String,
     created_date: {

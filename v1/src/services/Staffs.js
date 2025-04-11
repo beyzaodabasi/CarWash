@@ -1,7 +1,11 @@
 const BaseService = require('./BaseService')
 const StaffModel = require('../models/Staff')
+const UserService = require('./Users')
+const WalletService = require('./Wallets')
+const uploadImage = require('../scripts/uploadImage')
+const moment = require('moment')
+const soap = require('soap')
 const i18n = require('../config/translate')
-const Staff = require('../models/Staff')
 
 class Staffs extends BaseService {
   constructor() {
@@ -9,27 +13,133 @@ class Staffs extends BaseService {
   }
 
   create(data) {
-    const localTime = new Date(Date.now() + 10800000)
     return new Promise(async (resolve, reject) => {
-      await Staff.find({ email: data.email })
+      const address = 'https://tckimlik.nvi.gov.tr/service/kpspublic.asmx?WSDL'
+      let year = moment(data.birthDate).format('YYYY')
+      let test = new Date(data.birthDate)
+      let diff_ms = Date.now() - test.getTime()
+      var age_dt = new Date(diff_ms)
+      var age = Math.abs(age_dt.getUTCFullYear() - 1970)
+
+      await StaffModel.findOne({ tckn: data.tckn })
         .then(async (response) => {
-          if (response.length > 0) {
-            reject(new Error(i18n.__('staffCreateError')))
-          } else {
-            await StaffModel.create(data)
-              .then((response) => {
-                if (response) resolve(response)
-                else reject(new Error(i18n.__('staffCreateError')))
+          if (response) return reject(new Error(i18n.__('staffCreateTcknError')))
+          else {
+            const userData = {
+              tenant: data.tenant,
+              email: data.email,
+              password: data.password,
+              name: `${data.firstName} ${data.lastName}`,
+              gsm: data.gsm,
+              city: data?.city,
+              town: data?.town,
+              userType: 'STAFF',
+              active: true,
+              version: data.version,
+            }
+
+            const file = {
+              base64Data: data.base64drivingLicenseImage,
+            }
+            await uploadImage(file)
+              .then(async (response) => {
+                data.drivingLicenseImage = {
+                  key: response.key,
+                  url: response.path,
+                }
+                if (data.otherNationality == true) {
+                  // Yabancı uyruklu ise
+                  if (age >= 18) {
+                    await UserService.create(userData)
+                      .then(async (user) => {
+                        data.user = user._id
+                        await StaffModel.create(data)
+                          .then(async (staff) => {
+                            const walletData = {
+                              tenant: data.tenant,
+                              user: user._id,
+                              name: `${data.firstName} ${data.lastName}`,
+                              balance: 0,
+                              version: data.version,
+                            }
+                            await WalletService.create(walletData)
+                              .then((wallet) => {
+                                staff.wallet = wallet._id
+                                staff.save()
+                                return resolve(staff)
+                              })
+                              .catch((error) => {
+                                return reject(new Error(error.message))
+                              })
+                          })
+                          .catch((error) => {
+                            return reject(new Error(error.message))
+                          })
+                      })
+                      .catch((error) => {
+                        return reject(new Error(error.message))
+                      })
+                  } else {
+                    return reject(new Error(i18n.__('staffCreateAgeLimitError')))
+                  }
+                } else if (data.otherNationality == false) {
+                  // Türk uyruklu ise
+                  await soap.createClient(address, async (err, client) => {
+                    let degerler = {
+                      TCKimlikNo: data.tckn,
+                      Ad: data.firstName,
+                      Soyad: data.lastName,
+                      DogumYili: year,
+                    }
+                    await client.TCKimlikNoDogrula(degerler, async (err, result) => {
+                      if (result.TCKimlikNoDogrulaResult && age >= 18) {
+                        await UserService.create(userData)
+                          .then(async (user) => {
+                            data.user = user._id
+                            await StaffModel.create(data)
+                              .then(async (staff) => {
+                                const walletData = {
+                                  tenant: data.tenant,
+                                  user: user._id,
+                                  name: `${data.firstName} ${data.lastName}`,
+                                  balance: 0,
+                                  version: data.version,
+                                }
+                                await WalletService.create(walletData)
+                                  .then((wallet) => {
+                                    staff.wallet = wallet._id
+                                    staff.save()
+                                    return resolve(staff)
+                                  })
+                                  .catch((error) => {
+                                    return reject(new Error(i18n.__('walletCreateError')))
+                                  })
+                              })
+                              .catch((error) => {
+                                return reject(new Error(error.message))
+                              })
+                          })
+                          .catch((error) => {
+                            return reject(new Error(error.message))
+                          })
+                      } else if (age < 18) {
+                        return reject(new Error(i18n.__('staffCreateAgeLimitError')))
+                      } else {
+                        return reject(new Error(i18n.__('staffCreateError')))
+                      }
+                    })
+                  })
+                } else {
+                  return reject(new Error(i18n.__('staffCreateError')))
+                }
               })
-              .catch((err) => {
-                err.message = i18n.__('staffCreateError')
-                reject(err)
+              .catch((error) => {
+                return reject(new Error(i18n.__('staffCreateImageError')))
               })
           }
         })
-        .catch((err) => {
-          err.message = i18n.__('staffCreateError')
-          reject(err)
+        .catch((error) => {
+          return reject(new Error(error.message))
         })
     })
   }
@@ -38,6 +148,8 @@ class Staffs extends BaseService {
     return new Promise(async (resolve, reject) => {
       await StaffModel.findOne(where)
         .populate('user')
+        .populate('wallet')
+        .populate('tenant')
         .then((response) => {
           if (response) resolve(response)
           else reject(new Error(i18n.__('staffNotFound')))
@@ -53,6 +165,8 @@ class Staffs extends BaseService {
   list(where) {
     return new Promise((resolve, reject) => {
       StaffModel.find(where)
+        .populate('user')
+        .populate('wallet')
         .then((response) => {
           if (response) resolve(response)
           else reject(new Error(i18n.__('staffListError')))

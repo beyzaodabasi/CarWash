@@ -14,8 +14,10 @@ const TransactionSchema = new Mongoose.Schema(
       type: Mongoose.Types.ObjectId,
       ref: 'wallets',
     },
-    // TODO: Yıkama tutulacak (Rental Gibi)
-    date: Date,
+    washing: {
+      type: Mongoose.Types.ObjectId,
+      ref: 'washings',
+    },
     amount: Number,
     paymentGateway: String,
     transactionId: String,

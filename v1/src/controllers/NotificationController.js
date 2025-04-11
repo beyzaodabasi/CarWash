@@ -6,7 +6,6 @@ const ApiError = require('../errors/ApiError')
 const i18n = require('../config/translate')
 
 const store = async (req, res, next) => {
-  console.log('req.user', req.user.userType)
   const title = req.body.title
   const priority = req.body.priority || 'high'
   const message = req.body.message

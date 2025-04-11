@@ -17,6 +17,7 @@ const WalletSchema = new Mongoose.Schema(
       },
     ],
     name: String,
+    // Member Card
     cards: [
       {
         isActive: {
@@ -31,6 +32,7 @@ const WalletSchema = new Mongoose.Schema(
         created_date: Date,
       },
     ],
+    // Member Temp Card
     tempCard: {
       paymentId: { type: String, default: null },
       conversationId: { type: String, default: null },
@@ -58,6 +60,16 @@ const WalletSchema = new Mongoose.Schema(
     toObject: { virtuals: true, getters: true },
   }
 )
+
+// Staff Balance
+WalletSchema.virtual('balance').get(function () {
+  return this.transactions
+    .filter(function (transaction) {
+      const successed = transaction.status === 'SUCCESSED' && transaction.type === 1
+      return successed
+    })
+    .reduce((total, transaction) => (total += transaction.amount), 0)
+})
 
 WalletSchema.set('toObject', { virtuals: true })
 WalletSchema.set('toJSON', { virtuals: true })
