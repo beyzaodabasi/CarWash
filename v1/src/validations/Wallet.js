@@ -22,7 +22,21 @@ const updateValidation = Joi.object({
   transactions: Joi.array().label(i18n.__('labelTransactions')),
 })
 
+const card3DStartValidation = Joi.object({
+  card: Joi.object({
+    cardAlias: Joi.string().required().label(i18n.__('labelCardAlias')),
+    cardHolderName: Joi.string().required().label(i18n.__('labelCardHolderName')),
+    cardNumber: Joi.string().required().label(i18n.__('labelCardNumber')),
+    expireMonth: Joi.string().required().label(i18n.__('labelExpireMonth')),
+    expireYear: Joi.string().required().label(i18n.__('labelExpireYear')),
+    cvc: Joi.string().required().label(i18n.__('labelCvc')),
+  })
+    .required()
+    .label(i18n.__('labelCard')),
+})
+
 module.exports = {
   createValidation,
   updateValidation,
+  card3DStartValidation,
 }

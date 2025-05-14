@@ -1,6 +1,5 @@
 const BaseService = require('./BaseService')
 const TransactionModel = require('../models/Transaction')
-const moment = require('moment')
 const i18n = require('../config/translate')
 
 class Transactions extends BaseService {

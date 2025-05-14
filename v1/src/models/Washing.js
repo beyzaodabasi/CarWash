@@ -30,11 +30,19 @@ const WashingSchema = new Mongoose.Schema(
       type: Mongoose.Types.ObjectId,
       ref: 'users',
     },
+    // TODO: randevu adresi
+    // member içerisinde birden fazla adresi var ordan seçtiği adres eklenecek
     // randevu saati
     start: Date,
     // yıkama bitiş saati
     end: Date,
     total: Number,
+    factors: [
+      {
+        type: Mongoose.Types.ObjectId,
+        ref: 'prices',
+      },
+    ],
     status: {
       type: String,
       enum: ['WAITING', 'IN_PROGRESS', 'FINISHED', 'CANCELLED'],

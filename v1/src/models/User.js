@@ -1,6 +1,6 @@
 const Mongoose = require('mongoose')
 
-const UserScheme = new Mongoose.Schema(
+const UserSchema = new Mongoose.Schema(
   {
     superUser: {
       type: Mongoose.Types.ObjectId,
@@ -55,4 +55,4 @@ const UserScheme = new Mongoose.Schema(
   { versionKey: false, timestamps: false }
 )
 
-module.exports = Mongoose.model('users', UserScheme)
+module.exports = Mongoose.model('users', UserSchema)

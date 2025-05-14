@@ -2,6 +2,9 @@ const Mongoose = require('mongoose')
 
 const DeviceSchema = new Mongoose.Schema(
   {
+    // TODO: Yıkama yapacak her aracın ücret bilgisi olacak. Bu yüzden price modeli oluşturulabilir.
+    // TODO: Şehir ve araç tipine göre ücret belirlenebilir.
+    // TODO: Yıkama araçları için kasa tipi belirtilecek. Buna göre fiyat belirlenebilir.
     tenant: {
       type: Mongoose.Types.ObjectId,
       ref: 'tenants',
@@ -23,6 +26,11 @@ const DeviceSchema = new Mongoose.Schema(
     licenseImage: {
       key: String,
       url: String,
+    },
+    // Araç tipi -> Çalışan, Müşteri
+    vehicleType: {
+      type: String,
+      enum: ['WORKER', 'CUSTOMER'],
     },
     // araç tipi -> elektrikli, hibrit, benzinli, dizel
     type: {

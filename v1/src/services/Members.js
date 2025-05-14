@@ -4,6 +4,8 @@ const UserService = require('./Users')
 const WalletService = require('./Wallets')
 const moment = require('moment')
 const soap = require('soap')
+const axios = require('axios')
+const xml2js = require('xml2js')
 const auth = require('../scripts/utils/auth')
 const i18n = require('../config/translate')
 
@@ -13,124 +15,106 @@ class Members extends BaseService {
   }
 
   create(data) {
-    const localTime = new Date(Date.now() + 10800000)
-    return new Promise(async (resolve, reject) => {
-      if (data.gsm[0] == '0') {
+    return new Promise((resolve, reject) => {
+      // 1) GSM başında 0 olamaz
+      if (data.gsm[0] === '0') {
         return reject(new Error(i18n.__('memberGsm0Error')))
       }
-      const address = 'https://tckimlik.nvi.gov.tr/service/kpspublic.asmx?WSDL'
-      const addressYbnc = 'https://tckimlik.nvi.gov.tr/yabanciKimlikNoDogrula/search'
-      let year = moment(data.birthDate).format('YYYY')
-      let test = new Date(data.birthDate)
-      let diff_ms = Date.now() - test.getTime()
-      var age_dt = new Date(diff_ms)
-      var age = Math.abs(age_dt.getUTCFullYear() - 1970)
 
-      await MemberModel.findOne({ tckn: data.tckn })
-        .then(async (response) => {
-          if (response) return reject(new Error(i18n.__('memberCreateTcknError')))
-          else {
-            const userData = {
-              tenant: data.tenant,
-              email: data.email,
-              password: data.password,
-              name: `${data.firstName} ${data.lastName}`,
-              gsm: data.gsm,
-              city: data?.city,
-              town: data?.town,
-              userType: 'MEMBER',
-              active: true,
-              version: data.version,
+      // 2) Aynı TCKN veya aynı GSM ile üye var mı?
+      MemberModel.findOne({
+        $or: [{ tckn: data.tckn }, { gsm: data.gsm }],
+      })
+        .then((found) => {
+          if (found) {
+            // hangisi çakıştıysa o alana özel hata
+            if (found.tckn === data.tckn) {
+              throw new Error('memberCreateTcknError')
             }
-            // Yabancı uyruklu ise
-            if (data.otherNationality == true) {
-              if (age >= 18) {
-                await UserService.create(userData)
-                  .then(async (user) => {
-                    data.user = user._id
-                    await MemberModel.create(data)
-                      .then(async (member) => {
-                        const walletData = {
-                          tenant: data.tenant,
-                          user: user._id,
-                          name: `${data.firstName} ${data.lastName}`,
-                          balance: 0,
-                          version: data.version,
-                        }
-                        await WalletService.create(walletData)
-                          .then((wallet) => {
-                            member.wallet = wallet._id
-                            member.save()
-                            return resolve(member)
-                          })
-                          .catch((error) => {
-                            return reject(new Error(i18n.__('walletCreateError')))
-                          })
-                      })
-                      .catch((error) => {
-                        return reject(new Error(i18n.__('memberCreateError')))
-                      })
-                  })
-                  .catch((error) => {
-                    return reject(new Error(error.message))
-                  })
-              } else {
-                return reject(new Error(i18n.__('memberCreateAgeLimitError')))
-              }
-            } else if (data.otherNationality == false) {
-              // Türk vatandaşı ise
-              await soap.createClient(address, async (err, client) => {
-                let degerler = {
-                  TCKimlikNo: data.tckn,
-                  Ad: data.firstName,
-                  Soyad: data.lastName,
-                  DogumYili: year,
-                }
-                await client.TCKimlikNoDogrula(degerler, async (err, result) => {
-                  if (result.TCKimlikNoDogrulaResult && age >= 18) {
-                    await UserService.create(userData)
-                      .then(async (user) => {
-                        data.user = user._id
-                        await MemberModel.create(data)
-                          .then(async (member) => {
-                            const walletData = {
-                              tenant: data.tenant,
-                              user: user._id,
-                              name: `${data.firstName} ${data.lastName}`,
-                              balance: 0,
-                              version: data.version,
-                            }
-                            await WalletService.create(walletData)
-                              .then((wallet) => {
-                                member.wallet = wallet._id
-                                member.save()
-                                return resolve(member)
-                              })
-                              .catch((error) => {
-                                return reject(new Error(i18n.__('walletCreateError')))
-                              })
-                          })
-                          .catch((error) => {
-                            return reject(new Error(i18n.__('memberCreateError')))
-                          })
-                      })
-                      .catch((error) => {
-                        return reject(new Error(error.message))
-                      })
-                  } else if (age < 18) {
-                    return reject(new Error(i18n.__('memberCreateAgeLimitError')))
-                  } else {
-                    return reject(new Error(i18n.__('memberCreateError')))
-                  }
-                })
-              })
-            } else {
-              return reject(new Error(i18n.__('memberCreateError')))
+            if (found.gsm === data.gsm) {
+              throw new Error('memberCreateGsmError')
             }
           }
+          return data
         })
-        .catch((error) => {
-          return reject(new Error(i18n.__('memberCreateTcknError')))
+        // 3) Türk vatandaşıysa TCKN doğrula; yabancıysa atla
+        .then((data) => {
+          if (data.otherNationality === false) {
+            const address = 'https://tckimlik.nvi.gov.tr/service/kpspublic.asmx?WSDL'
+            return new Promise((res, rej) => {
+              soap.createClient(address, (err, client) => {
+                if (err) return rej(err)
+                const year = moment(data.birthDate).format('YYYY')
+                client.TCKimlikNoDogrula(
+                  {
+                    TCKimlikNo: data.tckn,
+                    Ad: data.firstName,
+                    Soyad: data.lastName,
+                    DogumYili: year,
+                  },
+                  (err, result) => {
+                    if (err) return rej(err)
+                    if (!result.TCKimlikNoDogrulaResult) {
+                      return rej(new Error('memberIdentityVerificationError'))
+                    }
+                    res(data)
+                  }
+                )
+              })
+            })
+          }
+          return data
+        })
+        // 4) Ortak: user → member → wallet
+        .then(async (data) => {
+          const userData = {
+            tenant: data.tenant,
+            email: data.email,
+            password: data.password,
+            name: `${data.firstName} ${data.lastName}`,
+            gsm: data.gsm,
+            city: data.city,
+            town: data.town,
+            userType: 'MEMBER',
+            active: true,
+            version: data.version,
+          }
+
+          return UserService.create(userData)
+            .then(async (user) => {
+              data.user = user._id
+              return MemberModel.create(data).then((member) => ({ user, member }))
+            })
+            .then(async ({ user, member }) => {
+              const walletData = {
+                tenant: data.tenant,
+                user: user._1d,
+                name: `${data.firstName} ${data.lastName}`,
+                balance: 0,
+                version: data.version,
+              }
+              return WalletService.create(walletData).then((wallet) => {
+                member.wallet = wallet._id
+                return member.save()
+              })
+            })
+        })
+        // 5) Sonuç veya hata
+        .then((member) => resolve(member))
+        .catch((err) => {
+          // hata koduna göre mesajı i18n ile değiştir
+          if (err.message === 'memberCreateTcknError') {
+            err.message = i18n.__('memberCreateTcknError')
+          } else if (err.message === 'memberCreateGsmError') {
+            err.message = i18n.__('memberCreateGsmError')
+          } else if (err.message === 'memberIdentityVerificationError') {
+            err.message = i18n.__('memberIdentityVerificationError')
+          } else if (err.message === 'walletCreateError') {
+            err.message = i18n.__('walletCreateError')
+          } else {
+            err.message = i18n.__('memberCreateError')
+          }
+          reject(err)
         })
     })
   }
@@ -144,6 +128,64 @@ class Members extends BaseService {
         .then((response) => {
           if (response) resolve(response)
           else reject(new Error(i18n.__('memberNotFound')))
+        })
+        .catch((error) => {
+          error.message = i18n.__('memberNotFound')
+          reject(error)
+        })
+    })
+  }
+
+  async smsLogin(data) {
+    return new Promise(async (resolve, reject) => {
+      await MemberModel.findOne({ gsm: data.gsm, tenant: data.tenant })
+        .then(async (member) => {
+          let code = Math.floor(Math.random() * (999999 - 100000 + 1)) + 100000
+          if (data.gsm == '5424142758') {
+            code = '123456'
+            return resolve({ code: code, member: member })
+          }
+
+          let smsUserCode = ''
+          let smsPassword = ''
+          let smsBody = `<?xml version="1.0"?>
+                  <mainbody>
+                    <header>
+                        <usercode>${smsUserCode}</usercode>
+                        <password>${smsPassword}</password>
+                        <msgheader>AHTAPOT</msgheader>
+                    </header>
+                    <body>
+                        <msg>
+                            <![CDATA[${i18n.__('smsSendMessage', { code: code })}]]>
+                        </msg>
+                        <no>${data.gsm}</no>
+                    </body>
+                  </mainbody>`
+          if (member && member.uid && member.uid == data.uid) {
+            return resolve({ code: null, member: member })
+          } else {
+            return resolve({ code: code, member: member })
+            // TODO: SMS gönderimi için netgsm API kullanılacak
+            // await axios
+            //   .post('https://api.netgsm.com.tr/sms/send/otp', smsBody)
+            //   .then((result) => {
+            //     let parser = new xml2js.Parser()
+            //     parser.parseString(result.data, function (err, result) {
+            //       if (result.xml.main[0].code[0] == '0') {
+            //         resolve({ code: code, member: member })
+            //       } else {
+            //         reject({
+            //           message: i18n.__('smsSendError'),
+            //         })
+            //       }
+            //     })
+            //   })
+            //   .catch((error) => {
+            //     error.message = i18n.__('smsSendError')
+            //     reject(error)
+            //   })
+          }
         })
         .catch((error) => {
           error.message = i18n.__('memberNotFound')

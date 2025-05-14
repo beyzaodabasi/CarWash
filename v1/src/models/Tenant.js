@@ -1,6 +1,6 @@
 const Mongoose = require('mongoose')
 
-const TenantScheme = new Mongoose.Schema(
+const TenantSchema = new Mongoose.Schema(
   {
     superUser: {
       type: Mongoose.Types.ObjectId,
@@ -51,4 +51,4 @@ const TenantScheme = new Mongoose.Schema(
   { versionKey: false, timestamps: false }
 )
 
-module.exports = Mongoose.model('tenants', TenantScheme)
+module.exports = Mongoose.model('tenants', TenantSchema)

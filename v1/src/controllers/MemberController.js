@@ -58,8 +58,8 @@ const login = async (req, res, next) => {
       if (response.user.password == req.body.password) {
         const user = {
           ...response.toObject(),
-          accessToken: generateAccessToken(response.toObject()),
-          refreshToken: generateRefreshToken(response.toObject()),
+          accessToken: generateAccessToken(response.user.toObject()),
+          refreshToken: generateRefreshToken(response.user.toObject()),
         }
         delete user.user.password
         res.status(httpStatus.OK).send(user)
@@ -67,6 +67,12 @@ const login = async (req, res, next) => {
         next(new ApiError(i18n.__('memberNotFound'), httpStatus.UNAUTHORIZED))
       }
     })
+    .catch((error) => next(new ApiError(error.message, httpStatus.UNAUTHORIZED)))
+}
+
+const smsLogin = async (req, res, next) => {
+  MemberService.smsLogin(req.body)
+    .then((response) => res.status(httpStatus.OK).send(response))
     .catch((error) => next(new ApiError(error.message, httpStatus.UNAUTHORIZED)))
 }
 
@@ -102,6 +108,7 @@ module.exports = {
   index,
   store,
   login,
+  smsLogin,
   show,
   update,
   destroy,

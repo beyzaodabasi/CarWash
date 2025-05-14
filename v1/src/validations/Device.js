@@ -21,6 +21,7 @@ const createValidation = Joi.object({
   //   .required()
   //   .label(i18n.__('labelLicenseImage')),
   base64licenseImage: Joi.string().required().label(i18n.__('labelBase64LicenseImage')),
+  vehicleType: Joi.string().valid('WORKER', 'CUSTOMER').required().label(i18n.__('labelVehicleType')),
   type: Joi.string().valid('ELECTRIC', 'HYBRID', 'PETROL', 'DIESEL').required().label(i18n.__('labelType')),
   city: Joi.string().required().label(i18n.__('labelCity')),
   town: Joi.string().required().label(i18n.__('labelTown')),
@@ -47,6 +48,7 @@ const updateValidation = Joi.object({
   // })
   //   .label(i18n.__('labelLicenseImage')),
   base64licenseImage: Joi.string().label(i18n.__('labelBase64LicenseImage')),
+  vehicleType: Joi.string().valid('WORKER', 'CUSTOMER').label(i18n.__('labelVehicleType')),
   type: Joi.string().valid('ELECTRIC', 'HYBRID', 'PETROL', 'DIESEL').label(i18n.__('labelType')),
   city: Joi.string().label(i18n.__('labelCity')),
   town: Joi.string().label(i18n.__('labelTown')),

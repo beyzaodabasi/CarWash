@@ -40,6 +40,11 @@ const StaffSchema = new Mongoose.Schema(
       required: true,
       unique: true,
     },
+    score: {
+      type: Number,
+      enum: [0, 1, 2, 3, 4, 5],
+      default: 0,
+    },
     version: String,
     created_date: {
       type: Date,

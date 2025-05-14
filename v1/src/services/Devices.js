@@ -1,7 +1,6 @@
 const BaseService = require('./BaseService')
 const DeviceModel = require('../models/Device')
 const uploadImage = require('../scripts/uploadImage')
-const moment = require('moment')
 const i18n = require('../config/translate')
 
 class Devices extends BaseService {

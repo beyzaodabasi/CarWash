@@ -1,6 +1,8 @@
 const httpStatus = require('http-status')
 const Iyzipay = require('iyzipay')
 const WalletService = require('../services/Wallets')
+const SupportService = require('../services/Supports')
+const threedsInitializeCreate = require('../scripts/iyzico/threedsInitializeCreate')
 const ApiError = require('../errors/ApiError')
 const i18n = require('../config/translate')
 
@@ -47,7 +49,35 @@ const destroy = async (req, res, next) => {
 }
 
 // TODO: 3D ile kart kayıt işlemi olacak. Kullanıcıdan belli miktar çekilip, iptal edilecek.
-const card3DStart = async (req, res, next) => {}
+// Eski kart silinmeden array'e eklenip, yeni kart kaydedilecek.
+const card3DStart = async (req, res, next) => {
+  const localTime = new Date(Date.now() + 10800000)
+  const {
+    card: { cardAlias: CARD_ALIAS, cardHolderName: CARD_HOLDER_NAME, cardNumber: CARD_NUMBER, expireMonth: EXPIRE_MONTH, expireYear: EXPIRE_YEAR, cvc: CVC },
+  } = req.body
+
+  const walletId = req.member.wallet._id
+  const member = req.member
+
+  const data = {
+    language: req.headers['language'],
+    CARD_HOLDER_NAME,
+    CARD_ALIAS,
+    CARD_NUMBER,
+    EXPIRE_MONTH,
+    EXPIRE_YEAR,
+    CVC,
+    member,
+  }
+
+  // walletservice findone
+  await WalletService.findOne({ _id: walletId })
+    .then(async (wallet) => {
+      const response = await threedsInitializeCreate(data, res, next)
+      return res.status(httpStatus.OK).send(response)
+    })
+    .catch((error) => next(new ApiError(error.message, httpStatus.NOT_FOUND)))
+}
 
 // TODO: 3D nin sonlandırılması
 const card3DEnd = async (req, res, next) => {}
@@ -58,4 +88,5 @@ module.exports = {
   store,
   update,
   destroy,
+  card3DStart,
 }
